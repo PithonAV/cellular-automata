@@ -15,8 +15,8 @@ enum CellVal{
 
 #[derive(Clone,Copy,PartialEq)]
 struct CellContent{
-    Current: CellVal,
-    Next: CellVal,
+    current: CellVal,
+    next: CellVal,
 }
 
 #[derive(Resource)]
@@ -47,7 +47,7 @@ fn from_cell(i:i32) -> (i32,i32,i32){
 fn neighborhood(grid: &Grid, x:i32, y:i32, z:i32, buffer: &mut [CellVal;NEIGH_LEN]){
     for (i,(nx,ny,nz)) in NEIGH.iter().enumerate(){
         buffer[i] = match get_cell(x+nx,y+ny,z+nz) {
-            Some(coor) => grid.content[coor as usize].Current,
+            Some(coor) => grid.content[coor as usize].current,
             None => CellVal::None,
         }
     }
@@ -80,11 +80,11 @@ fn change_state(mut grid: ResMut<Grid>,
             let (x,y,z) = from_cell(i);
             let i = i as usize;
             neighborhood(&grid,x,y,z,&mut buffer);
-            grid.content[i].Next = growth_function(&buffer);
+            grid.content[i].next = growth_function(&buffer);
         }
         for i in 0..(A*B*C-1){
             let i = i as usize;
-            grid.content[i].Current = grid.content[i].Next;
+            grid.content[i].current = grid.content[i].next;
         }
     }
 }
@@ -105,15 +105,15 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mut grid = Grid {
-        content: [{Current: CellVal::Dead,
-                   Next: CellVal::Dead} ;(A*B*C)as usize],
+        content: [CellContent {current: CellVal::Dead,
+                   next: CellVal::Dead} ;(A*B*C)as usize],
     };
-    grid.content[23].Current = CellVal::Alive; 
-    grid.content[24].Current = CellVal::Alive;
-    grid.content[25].Current = CellVal::Alive; 
-    grid.content[23].Next = CellVal::NewAlive; 
-    grid.content[24].Next = CellVal::NewAlive;
-    grid.content[25].Next = CellVal::NewAlive;   
+    grid.content[23].current = CellVal::Alive; 
+    grid.content[24].current = CellVal::Alive;
+    grid.content[25].current = CellVal::Alive; 
+    grid.content[23].next = CellVal::Alive; 
+    grid.content[24].next = CellVal::Alive;
+    grid.content[25].next = CellVal::Alive;   
     commands.insert_resource(grid);
 
 
@@ -124,7 +124,6 @@ fn setup(
 
     let cube = meshes.add(Cuboid::new(0.5, 0.5, 0.5));
 
-    let mut hsla = Hsla::hsl(0.0, 1.0, 0.5);
     for i in 0..(A*B*C) {
             let (x,y,z) = from_cell(i);
             commands.spawn((
@@ -145,7 +144,7 @@ fn update_view(
     for (material_handle,cell) in &query {
             if let Some(material) = materials.get_mut(material_handle){
                 let c = match get_cell(cell.x,cell.y,cell.z) {
-                    Some(coor) => grid.content[coor as usize].Current,
+                    Some(coor) => grid.content[coor as usize].current,
                     None => panic!("Les coordonnées en entrée ne correpondent pas à une couleur"),
                 };
                 material.base_color.set_alpha(match c{
